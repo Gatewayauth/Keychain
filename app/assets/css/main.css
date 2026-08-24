@@ -1,0 +1,62 @@
+/* Keychain palette: desaturated bronze/gold (keys, brass — warm, not neon)
+   over warm graphite. Type is Figtree for UI, Space Grotesk for the wordmark,
+   JetBrains Mono for secrets/codes.
+   Fonts load via a <link> in nuxt.config app.head, not an @import here, so the
+   font request is discoverable in the static shell and fetches in parallel with
+   this bundle rather than waiting behind it. */
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-brand-50: #FBF7EF;
+  --color-brand-100: #F4E9D3;
+  --color-brand-200: #E8D2A6;
+  --color-brand-300: #D9B673;
+  --color-brand-400: #CB9C4B;
+  --color-brand-500: #B8802F;
+  --color-brand-600: #9C6726;
+  --color-brand-700: #7C4F22;
+  --color-brand-800: #613F20;
+  --color-brand-900: #4F341E;
+  --color-brand-950: #2B1B0F;
+}
+
+/* wordmark / display type helper */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Motion is kept subtle, and gated entirely behind reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-rise {
+    animation: rise 0.24s ease both;
+  }
+}
