@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 
-const { user, isAuthenticated, logout } = useAuth()
+const { user, isAuthenticated, isAdmin, logout } = useAuth()
 const route = useRoute()
 
-const nav = [
+// Admin link only for users who actually hold an admin role.
+const nav = computed(() => [
   { label: 'Account', to: '/account', icon: 'i-lucide-user-round' },
   { label: 'Security', to: '/account/security', icon: 'i-lucide-shield-check' },
-  { label: 'Admin', to: '/admin', icon: 'i-lucide-sliders-horizontal' }
-]
+  ...(isAdmin.value ? [{ label: 'Admin', to: '/admin', icon: 'i-lucide-sliders-horizontal' }] : [])
+])
 
 function isActive(to: string) {
   return to === '/account' ? route.path === to : route.path.startsWith(to)

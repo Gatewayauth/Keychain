@@ -1268,6 +1268,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change a user's role (owner or super-admin only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UserRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                400: components["responses"]["Error"];
+                403: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/sessions": {
         parameters: {
             query?: never;
@@ -1369,6 +1413,9 @@ export interface components {
             displayName?: string | null;
             status?: string;
             mfaRequired?: boolean;
+            /** @enum {string} */
+            role?: "USER" | "ADMIN" | "OWNER";
+            superAdmin?: boolean;
         };
         SessionSummary: {
             id?: string;
@@ -1455,6 +1502,10 @@ export interface components {
         UserStatusRequest: {
             /** @enum {string} */
             status: "ACTIVE" | "DISABLED" | "LOCKED" | "PENDING_VERIFICATION";
+        };
+        UserRoleRequest: {
+            /** @enum {string} */
+            role: "USER" | "ADMIN" | "OWNER";
         };
         MessageResponse: {
             message?: string;

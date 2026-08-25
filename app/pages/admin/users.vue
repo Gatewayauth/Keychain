@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import type { User, SessionSummary, UserStatus } from '~/types/gateway'
+import type { User, SessionSummary, UserStatus, UserRole } from '~/types/gateway'
 
 useSeoMeta({ title: 'Admin · Users' })
 
 const api = useApi()
-const { token } = useAdminToken()
 const toast = useToast()
+// Only owners / super-admins may change roles.
+const { isOwner, isSuperAdmin } = useAuth()
+const canManageRoles = computed(() => isOwner.value || isSuperAdmin.value)
 
 const users = ref<User[]>([])
 const pending = ref(true)
@@ -20,10 +22,17 @@ const statusColor: Record<UserStatus, 'success' | 'error' | 'warning'> = {
   PENDING_VERIFICATION: 'warning'
 }
 
+const ROLES: UserRole[] = ['USER', 'ADMIN', 'OWNER']
+const roleColor: Record<UserRole, 'neutral' | 'primary' | 'warning'> = {
+  USER: 'neutral',
+  ADMIN: 'primary',
+  OWNER: 'warning'
+}
+
 async function load() {
   pending.value = true
   try {
-    users.value = await api.adminUsers(token.value, { limit, offset: offset.value })
+    users.value = await api.adminUsers({ limit, offset: offset.value })
   } catch (e) {
     toast.add({ title: apiErrorMessage(e), color: 'error' })
   } finally {
@@ -46,17 +55,20 @@ const selected = ref<User | null>(null)
 const sessions = ref<SessionSummary[]>([])
 const sessionsPending = ref(false)
 const savingStatus = ref(false)
+const savingRole = ref(false)
 const revokingAll = ref(false)
 const statusDraft = ref<UserStatus>('ACTIVE')
+const roleDraft = ref<UserRole>('USER')
 
 async function openUser(u: User) {
   selected.value = u
   statusDraft.value = (u.status as UserStatus) || 'ACTIVE'
+  roleDraft.value = (u.role as UserRole) || 'USER'
   detailOpen.value = true
   sessions.value = []
   sessionsPending.value = true
   try {
-    sessions.value = await api.adminUserSessions(token.value, u.id!)
+    sessions.value = await api.adminUserSessions(u.id!)
   } catch (e) {
     toast.add({ title: apiErrorMessage(e), color: 'error' })
   } finally {
@@ -68,7 +80,7 @@ async function saveStatus() {
   if (!selected.value?.id) return
   savingStatus.value = true
   try {
-    const updated = await api.adminSetUserStatus(token.value, selected.value.id, statusDraft.value)
+    const updated = await api.adminSetUserStatus(selected.value.id, statusDraft.value)
     selected.value = updated
     const i = users.value.findIndex(x => x.id === updated.id)
     if (i >= 0) users.value[i] = updated
@@ -80,11 +92,27 @@ async function saveStatus() {
   }
 }
 
+async function saveRole() {
+  if (!selected.value?.id) return
+  savingRole.value = true
+  try {
+    const updated = await api.adminSetUserRole(selected.value.id, roleDraft.value)
+    selected.value = updated
+    const i = users.value.findIndex(x => x.id === updated.id)
+    if (i >= 0) users.value[i] = updated
+    toast.add({ title: 'Role updated', color: 'success', icon: 'i-lucide-check' })
+  } catch (e) {
+    toast.add({ title: apiErrorMessage(e), color: 'error' })
+  } finally {
+    savingRole.value = false
+  }
+}
+
 async function revokeAll() {
   if (!selected.value?.id) return
   revokingAll.value = true
   try {
-    await api.adminRevokeUserSessions(token.value, selected.value.id)
+    await api.adminRevokeUserSessions(selected.value.id)
     sessions.value = []
     toast.add({ title: 'Sessions revoked', color: 'success', icon: 'i-lucide-check' })
   } catch (e) {
@@ -98,7 +126,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminTokenGate>
+  <div>
     <PageHeading
       title="Users"
       subtitle="Accounts registered on this identity provider."
@@ -154,6 +182,14 @@ onMounted(load)
                 {{ u.email }}
               </p>
             </div>
+            <UBadge
+              v-if="u.role && u.role !== 'USER'"
+              :color="roleColor[u.role as UserRole] || 'neutral'"
+              variant="subtle"
+              size="sm"
+            >
+              {{ u.role }}
+            </UBadge>
             <UBadge
               v-if="u.status"
               :color="statusColor[u.status as UserStatus] || 'neutral'"
@@ -254,6 +290,30 @@ onMounted(load)
             </p>
           </div>
 
+          <div v-if="canManageRoles">
+            <p class="text-xs uppercase tracking-wide text-dimmed mb-2">
+              Role
+            </p>
+            <div class="flex items-center gap-2">
+              <USelect
+                v-model="roleDraft"
+                :items="ROLES"
+                class="flex-1"
+              />
+              <UButton
+                :loading="savingRole"
+                :disabled="roleDraft === selected.role"
+                icon="i-lucide-save"
+                @click="saveRole"
+              >
+                Save
+              </UButton>
+            </div>
+            <p class="text-xs text-dimmed mt-1.5">
+              ADMIN and OWNER can use the admin area; OWNER can also manage roles.
+            </p>
+          </div>
+
           <div>
             <div class="flex items-center justify-between mb-2">
               <p class="text-xs uppercase tracking-wide text-dimmed">
@@ -317,5 +377,5 @@ onMounted(load)
         </div>
       </template>
     </USlideover>
-  </AdminTokenGate>
+  </div>
 </template>

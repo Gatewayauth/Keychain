@@ -4,7 +4,6 @@ import type { ClientResponse } from '~/types/gateway'
 useSeoMeta({ title: 'Admin · Clients' })
 
 const api = useApi()
-const { token } = useAdminToken()
 const toast = useToast()
 
 const clients = ref<ClientResponse[]>([])
@@ -30,7 +29,7 @@ const deleting = ref<string | null>(null)
 async function load() {
   pending.value = true
   try {
-    clients.value = await api.adminClients(token.value)
+    clients.value = await api.adminClients()
   } catch (e) {
     toast.add({ title: apiErrorMessage(e), color: 'error' })
   } finally {
@@ -56,7 +55,7 @@ async function create() {
   creating.value = true
   createError.value = ''
   try {
-    const res = await api.adminCreateClient(token.value, {
+    const res = await api.adminCreateClient({
       name: form.name.trim(),
       redirect_uris,
       scopes: form.scopes.split(/\s+/).map(s => s.trim()).filter(Boolean),
@@ -78,7 +77,7 @@ async function remove(c: ClientResponse) {
   if (!c.client_id) return
   deleting.value = c.client_id
   try {
-    await api.adminDeleteClient(token.value, c.client_id)
+    await api.adminDeleteClient(c.client_id)
     clients.value = clients.value.filter(x => x.client_id !== c.client_id)
     toast.add({ title: 'Client deleted', color: 'success', icon: 'i-lucide-check' })
   } catch (e) {
@@ -99,7 +98,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminTokenGate>
+  <div>
     <PageHeading
       title="OAuth clients"
       subtitle="Relying parties registered with this identity provider."
@@ -378,5 +377,5 @@ onMounted(load)
         </UButton>
       </template>
     </UModal>
-  </AdminTokenGate>
+  </div>
 </template>

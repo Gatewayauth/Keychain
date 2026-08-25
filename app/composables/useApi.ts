@@ -11,6 +11,7 @@ import type {
   CreateClientRequest,
   ClientResponse,
   UserStatus,
+  UserRole,
   MessageResponse,
   AuditEntry
 } from '~/types/gateway'
@@ -19,7 +20,6 @@ import type {
 // $api fetch instance — cookie auth and error normalization live in that plugin.
 export function useApi() {
   const { $api } = useNuxtApp()
-  const admin = (token: string) => ({ 'X-Admin-Token': token })
 
   return {
     // auth
@@ -73,48 +73,28 @@ export function useApi() {
     consent: (body: ConsentRequest) =>
       $api<MessageResponse>('/oauth2/consent', { method: 'POST', body }),
 
-    // admin routes, gated by the X-Admin-Token bootstrap header
-    adminClients: (token: string) =>
-      $api<ClientResponse[]>('/api/admin/clients', { headers: admin(token) }),
-    adminCreateClient: (token: string, body: CreateClientRequest) =>
-      $api<ClientResponse>('/api/admin/clients', {
-        method: 'POST',
-        headers: admin(token),
-        body
-      }),
-    adminDeleteClient: (token: string, id: string) =>
-      $api(`/api/admin/clients/${id}`, {
-        method: 'DELETE',
-        headers: admin(token)
-      }),
-    adminUsers: (token: string, params?: { limit?: number, offset?: number }) =>
-      $api<User[]>('/api/admin/users', { headers: admin(token), params }),
-    adminUser: (token: string, id: string) =>
-      $api<User>(`/api/admin/users/${id}`, { headers: admin(token) }),
-    adminSetUserStatus: (token: string, id: string, status: UserStatus) =>
-      $api<User>(`/api/admin/users/${id}/status`, {
-        method: 'POST',
-        headers: admin(token),
-        body: { status }
-      }),
-    adminUserSessions: (token: string, id: string) =>
-      $api<SessionSummary[]>(`/api/admin/users/${id}/sessions`, {
-        headers: admin(token)
-      }),
-    adminRevokeUserSessions: (token: string, id: string) =>
-      $api(`/api/admin/users/${id}/revoke-sessions`, {
-        method: 'POST',
-        headers: admin(token)
-      }),
-    adminAudit: (token: string, limit = 100) =>
-      $api<AuditEntry[]>('/api/admin/audit', {
-        headers: admin(token),
-        params: { limit }
-      }),
-    adminRotateKeys: (token: string) =>
-      $api<MessageResponse>('/api/admin/keys/rotate', {
-        method: 'POST',
-        headers: admin(token)
-      })
+    // admin routes — authorized by the session cookie + the caller's admin role
+    adminClients: () =>
+      $api<ClientResponse[]>('/api/admin/clients'),
+    adminCreateClient: (body: CreateClientRequest) =>
+      $api<ClientResponse>('/api/admin/clients', { method: 'POST', body }),
+    adminDeleteClient: (id: string) =>
+      $api(`/api/admin/clients/${id}`, { method: 'DELETE' }),
+    adminUsers: (params?: { limit?: number, offset?: number }) =>
+      $api<User[]>('/api/admin/users', { params }),
+    adminUser: (id: string) =>
+      $api<User>(`/api/admin/users/${id}`),
+    adminSetUserStatus: (id: string, status: UserStatus) =>
+      $api<User>(`/api/admin/users/${id}/status`, { method: 'POST', body: { status } }),
+    adminSetUserRole: (id: string, role: UserRole) =>
+      $api<User>(`/api/admin/users/${id}/role`, { method: 'POST', body: { role } }),
+    adminUserSessions: (id: string) =>
+      $api<SessionSummary[]>(`/api/admin/users/${id}/sessions`),
+    adminRevokeUserSessions: (id: string) =>
+      $api(`/api/admin/users/${id}/revoke-sessions`, { method: 'POST' }),
+    adminAudit: (limit = 100) =>
+      $api<AuditEntry[]>('/api/admin/audit', { params: { limit } }),
+    adminRotateKeys: () =>
+      $api<MessageResponse>('/api/admin/keys/rotate', { method: 'POST' })
   }
 }

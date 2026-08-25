@@ -2,7 +2,6 @@
 useSeoMeta({ title: 'Admin · Keys' })
 
 const api = useApi()
-const { token } = useAdminToken()
 const toast = useToast()
 
 const confirmOpen = ref(false)
@@ -12,7 +11,7 @@ const lastRotated = ref<string>('')
 async function rotate() {
   rotating.value = true
   try {
-    const res = await api.adminRotateKeys(token.value)
+    const res = await api.adminRotateKeys()
     lastRotated.value = new Date().toLocaleString()
     confirmOpen.value = false
     toast.add({
@@ -29,7 +28,7 @@ async function rotate() {
 </script>
 
 <template>
-  <AdminTokenGate>
+  <div>
     <PageHeading
       title="Signing keys"
       subtitle="Rotate the JWT signing key used for issued tokens."
@@ -104,5 +103,5 @@ async function rotate() {
         </div>
       </template>
     </UModal>
-  </AdminTokenGate>
+  </div>
 </template>

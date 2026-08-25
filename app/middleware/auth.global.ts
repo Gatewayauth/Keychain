@@ -1,14 +1,16 @@
 /**
- * Session guard. `/account/*` requires a resolved user; unauthenticated
- * visitors are bounced to /login with a redirect back. Admin (`/admin`) is
- * gated by its own token, and the OIDC `/oauth2/authorize` route drives its
- * own login handshake — neither is guarded here.
+ * Session guard. `/account/*` and `/admin/*` require a resolved user;
+ * unauthenticated visitors are bounced to /login with a redirect back. `/admin`
+ * additionally requires an admin role. The OIDC `/oauth2/authorize` route drives
+ * its own login handshake and is not guarded here.
  */
-const PROTECTED = ['/account']
+const PROTECTED = ['/account', '/admin']
 const AUTH_PAGES = ['/login', '/register']
 
+const isUnder = (path: string, base: string) => path === base || path.startsWith(base + '/')
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const { ready, isAuthenticated, fetchMe } = useAuth()
+  const { ready, isAuthenticated, isAdmin, fetchMe } = useAuth()
 
   // Resolve session once per app load.
   if (!ready.value) await fetchMe()
@@ -18,10 +20,15 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo(isAuthenticated.value ? '/account' : '/login', { replace: true })
   }
 
-  const needsAuth = PROTECTED.some(p => to.path === p || to.path.startsWith(p + '/'))
+  const needsAuth = PROTECTED.some(p => isUnder(to.path, p))
 
   if (needsAuth && !isAuthenticated.value) {
     return navigateTo({ path: '/login', query: { redirect: to.fullPath } })
+  }
+
+  // Admin area requires an admin role; other signed-in users are sent to /account.
+  if (isUnder(to.path, '/admin') && isAuthenticated.value && !isAdmin.value) {
+    return navigateTo('/account')
   }
 
   // Keep signed-in users out of the login/register screens.

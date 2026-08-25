@@ -9,6 +9,10 @@ export function useAuth() {
   const ready = useState<boolean>('auth.ready', () => false)
 
   const isAuthenticated = computed(() => !!user.value)
+  // Admin gating is role-based (see backend user-bound admin). OWNER implies ADMIN.
+  const isAdmin = computed(() => user.value?.role === 'ADMIN' || user.value?.role === 'OWNER')
+  const isOwner = computed(() => user.value?.role === 'OWNER')
+  const isSuperAdmin = computed(() => user.value?.superAdmin === true)
 
   // resolve the current user from the cookie; never throws
   async function fetchMe(): Promise<User | null> {
@@ -63,6 +67,9 @@ export function useAuth() {
     user,
     ready,
     isAuthenticated,
+    isAdmin,
+    isOwner,
+    isSuperAdmin,
     fetchMe,
     login,
     completeMfa,

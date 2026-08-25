@@ -15,6 +15,7 @@ export type ConsentRequest = S['ConsentRequest']
 export type CreateClientRequest = S['CreateClientRequest']
 export type ClientResponse = S['ClientResponse']
 export type UserStatus = S['UserStatusRequest']['status']
+export type UserRole = S['UserRoleRequest']['role']
 export type MessageResponse = S['MessageResponse']
 export type ApiErrorBody = S['ErrorResponse']
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const { clear } = useAdminToken()
 const route = useRoute()
 
 const tabs = [
@@ -10,11 +9,6 @@ const tabs = [
 ]
 
 const isActive = (to: string) => route.path === to || route.path.startsWith(to + '/')
-
-async function lock() {
-  clear()
-  await navigateTo('/admin')
-}
 </script>
 
 <template>
@@ -36,14 +30,5 @@ async function lock() {
         {{ t.label }}
       </NuxtLink>
     </nav>
-    <UButton
-      size="xs"
-      color="neutral"
-      variant="ghost"
-      icon="i-lucide-lock"
-      @click="lock"
-    >
-      Lock
-    </UButton>
   </div>
 </template>

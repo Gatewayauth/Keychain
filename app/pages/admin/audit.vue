@@ -4,7 +4,6 @@ import type { AuditEntry } from '~/types/gateway'
 useSeoMeta({ title: 'Admin · Audit' })
 
 const api = useApi()
-const { token } = useAdminToken()
 const toast = useToast()
 
 const entries = ref<AuditEntry[]>([])
@@ -27,7 +26,7 @@ const detail = (e: AuditEntry) => {
 async function load() {
   pending.value = true
   try {
-    entries.value = await api.adminAudit(token.value, limit.value)
+    entries.value = await api.adminAudit(limit.value)
   } catch (e) {
     toast.add({ title: apiErrorMessage(e), color: 'error' })
   } finally {
@@ -40,7 +39,7 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminTokenGate>
+  <div>
     <PageHeading
       title="Audit log"
       subtitle="Recent security-relevant events."
@@ -120,5 +119,5 @@ onMounted(load)
         </li>
       </ul>
     </div>
-  </AdminTokenGate>
+  </div>
 </template>
