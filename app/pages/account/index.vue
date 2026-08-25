@@ -7,6 +7,12 @@ const { user, fetchMe } = useAuth()
 const api = useApi()
 const toast = useToast()
 
+// Only show "Connected accounts" when an external provider is configured.
+const { providers: extProviders, load: loadExtProviders } = useExternalProviders()
+onMounted(loadExtProviders)
+
+const { public: { tenantSlug } } = useRuntimeConfig()
+
 const resending = ref(false)
 
 async function resend() {
@@ -124,17 +130,26 @@ const statusColor: Record<UserStatus, 'success' | 'error' | 'warning' | 'neutral
               {{ user?.id }}
             </dd>
           </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-dimmed mb-1">
+              Tenant
+            </dt>
+            <dd class="font-mono text-sm text-muted select-all">
+              {{ tenantSlug }}
+            </dd>
+          </div>
         </dl>
       </SectionPanel>
 
       <SectionPanel
+        v-if="extProviders.length"
         title="Connected accounts"
         description="Link an external identity provider to this account."
         icon="i-lucide-link"
       >
-        <ExternalLoginButtons />
+        <ConnectedAccounts />
         <p class="mt-3 text-xs text-dimmed">
-          You'll be redirected to the provider and back. The linked login can then be used to sign in.
+          You'll be redirected to the provider and back. A connected login can be used to sign in.
         </p>
       </SectionPanel>
 

@@ -48,6 +48,11 @@ export function useApi() {
         body: { token, password }
       }),
 
+    // external identity providers actually configured on the backend
+    externalProviders: () => $api<string[]>('/api/auth/external/providers'),
+    // providers the current user has linked (connected) to their account
+    identities: () => $api<string[]>('/api/auth/identities'),
+
     // sessions
     sessions: () => $api<SessionSummary[]>('/api/auth/sessions'),
     revokeSession: (id: string) =>

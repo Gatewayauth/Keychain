@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { EXTERNAL_PROVIDERS, type ExternalProvider } from '~/types/gateway'
+import type { ExternalProvider } from '~/types/gateway'
 
 // These MUST be full-page navigations (the backend 302s to the provider),
 // never fetch — so we render real anchors to the backend start endpoint.
-const { public: { apiBase } } = useRuntimeConfig()
+const { public: { apiBase, tenantSlug } } = useRuntimeConfig()
+
+// Only render providers the backend actually has configured.
+const { providers, load } = useExternalProviders()
+onMounted(load)
 
 // Where to send the browser after login. Passed through the external flow so a
 // pending OIDC authorize request resumes instead of dumping the user on /account.
@@ -16,7 +20,7 @@ const meta: Record<ExternalProvider, { label: string, icon: string }> = {
 }
 
 const href = (p: ExternalProvider) => {
-  const base = `${apiBase}/api/auth/external/${p}/start`
+  const base = `${apiBase}/t/${tenantSlug}/api/auth/external/${p}/start`
   return props.redirect ? `${base}?redirect=${encodeURIComponent(props.redirect)}` : base
 }
 </script>
@@ -24,7 +28,7 @@ const href = (p: ExternalProvider) => {
 <template>
   <div class="grid grid-cols-3 gap-2">
     <UButton
-      v-for="p in EXTERNAL_PROVIDERS"
+      v-for="p in providers"
       :key="p"
       :href="href(p)"
       :icon="meta[p].icon"

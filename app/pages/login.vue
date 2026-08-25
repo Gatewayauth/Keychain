@@ -10,6 +10,10 @@ const toast = useToast()
 
 const redirect = computed(() => (route.query.redirect as string) || '/account')
 
+// Hide the "or continue with" divider + buttons when no external provider is configured.
+const { providers: extProviders, load: loadExtProviders } = useExternalProviders()
+onMounted(loadExtProviders)
+
 const step = ref<'credentials' | 'mfa'>('credentials')
 const loading = ref(false)
 const error = ref('')
@@ -122,13 +126,15 @@ function backToCredentials() {
       </UButton>
     </form>
 
-    <div class="my-5 flex items-center gap-3 text-xs text-dimmed">
-      <span class="h-px flex-1 bg-border" />
-      or continue with
-      <span class="h-px flex-1 bg-border" />
-    </div>
+    <template v-if="extProviders.length">
+      <div class="my-5 flex items-center gap-3 text-xs text-dimmed">
+        <span class="h-px flex-1 bg-border" />
+        or continue with
+        <span class="h-px flex-1 bg-border" />
+      </div>
 
-    <ExternalLoginButtons :redirect="(route.query.redirect as string) || undefined" />
+      <ExternalLoginButtons :redirect="(route.query.redirect as string) || undefined" />
+    </template>
 
     <template #footer>
       New here?
