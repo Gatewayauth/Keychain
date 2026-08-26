@@ -4,6 +4,7 @@ const route = useRoute()
 const tabs = [
   { label: 'Clients', to: '/admin/clients', icon: 'i-lucide-app-window' },
   { label: 'Users', to: '/admin/users', icon: 'i-lucide-users-round' },
+  { label: 'Roles', to: '/admin/roles', icon: 'i-lucide-shield-half' },
   { label: 'Audit', to: '/admin/audit', icon: 'i-lucide-scroll-text' },
   { label: 'Keys', to: '/admin/keys', icon: 'i-lucide-key-square' }
 ]

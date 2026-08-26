@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { User, SessionSummary, UserStatus, UserRole } from '~/types/gateway'
+import type { User, SessionSummary, UserStatus, UserRole, RbacRole } from '~/types/gateway'
 
 useSeoMeta({ title: 'Admin · Users' })
 
@@ -60,6 +60,12 @@ const revokingAll = ref(false)
 const statusDraft = ref<UserStatus>('ACTIVE')
 const roleDraft = ref<UserRole>('USER')
 
+// Custom RBAC roles (tenant-wide list + this user's assignments).
+const allRoles = ref<RbacRole[]>([])
+const roleItems = computed(() => allRoles.value.map(r => ({ label: `${r.name} (${r.slug})`, value: r.id })))
+const assignedRoleIds = ref<string[]>([])
+const savingRoles = ref(false)
+
 async function openUser(u: User) {
   selected.value = u
   statusDraft.value = (u.status as UserStatus) || 'ACTIVE'
@@ -67,12 +73,27 @@ async function openUser(u: User) {
   detailOpen.value = true
   sessions.value = []
   sessionsPending.value = true
+  assignedRoleIds.value = []
   try {
     sessions.value = await api.adminUserSessions(u.id!)
+    assignedRoleIds.value = (await api.adminUserRoles(u.id!)).map(r => r.id)
   } catch (e) {
     toast.add({ title: apiErrorMessage(e), color: 'error' })
   } finally {
     sessionsPending.value = false
+  }
+}
+
+async function saveRoles() {
+  if (!selected.value?.id) return
+  savingRoles.value = true
+  try {
+    await api.adminSetUserRoles(selected.value.id, assignedRoleIds.value)
+    toast.add({ title: 'Roles updated', color: 'success', icon: 'i-lucide-check' })
+  } catch (e) {
+    toast.add({ title: apiErrorMessage(e), color: 'error' })
+  } finally {
+    savingRoles.value = false
   }
 }
 
@@ -122,7 +143,14 @@ async function revokeAll() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  try {
+    allRoles.value = await api.adminRoles()
+  } catch {
+    allRoles.value = []
+  }
+})
 </script>
 
 <template>
@@ -311,6 +339,33 @@ onMounted(load)
             </div>
             <p class="text-xs text-dimmed mt-1.5">
               ADMIN and OWNER can use the admin area; OWNER can also manage roles.
+            </p>
+          </div>
+
+          <div v-if="allRoles.length">
+            <p class="text-xs uppercase tracking-wide text-dimmed mb-2">
+              Custom roles
+            </p>
+            <div class="flex items-center gap-2">
+              <USelectMenu
+                v-model="assignedRoleIds"
+                :items="roleItems"
+                value-key="value"
+                label-key="label"
+                multiple
+                placeholder="Assign roles"
+                class="flex-1"
+              />
+              <UButton
+                :loading="savingRoles"
+                icon="i-lucide-save"
+                @click="saveRoles"
+              >
+                Save
+              </UButton>
+            </div>
+            <p class="text-xs text-dimmed mt-1.5">
+              Emitted to apps via the OIDC roles claim.
             </p>
           </div>
 

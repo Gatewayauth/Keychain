@@ -12,6 +12,9 @@ import type {
   ClientResponse,
   UserStatus,
   UserRole,
+  RbacRole,
+  CreateRoleRequest,
+  UpdateRoleRequest,
   MessageResponse,
   AuditEntry
 } from '~/types/gateway'
@@ -88,6 +91,19 @@ export function useApi() {
       $api<User>(`/api/admin/users/${id}/status`, { method: 'POST', body: { status } }),
     adminSetUserRole: (id: string, role: UserRole) =>
       $api<User>(`/api/admin/users/${id}/role`, { method: 'POST', body: { role } }),
+    // custom RBAC roles
+    adminRoles: () =>
+      $api<RbacRole[]>('/api/admin/roles'),
+    adminCreateRole: (body: CreateRoleRequest) =>
+      $api<RbacRole>('/api/admin/roles', { method: 'POST', body }),
+    adminUpdateRole: (id: string, body: UpdateRoleRequest) =>
+      $api<RbacRole>(`/api/admin/roles/${id}`, { method: 'PATCH', body }),
+    adminDeleteRole: (id: string) =>
+      $api(`/api/admin/roles/${id}`, { method: 'DELETE' }),
+    adminUserRoles: (id: string) =>
+      $api<RbacRole[]>(`/api/admin/users/${id}/roles`),
+    adminSetUserRoles: (id: string, roleIds: string[]) =>
+      $api<RbacRole[]>(`/api/admin/users/${id}/roles`, { method: 'PUT', body: { roleIds } }),
     adminUserSessions: (id: string) =>
       $api<SessionSummary[]>(`/api/admin/users/${id}/sessions`),
     adminRevokeUserSessions: (id: string) =>
