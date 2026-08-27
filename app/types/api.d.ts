@@ -1685,6 +1685,14 @@ export interface components {
             scopes?: string[];
             public?: boolean;
             require_consent?: boolean;
+            required_roles?: string[];
+        };
+        UpdateClientRequest: {
+            name: string;
+            redirect_uris: string[];
+            scopes?: string[];
+            require_consent?: boolean;
+            required_roles?: string[];
         };
         ClientResponse: {
             client_id?: string;
@@ -1692,6 +1700,8 @@ export interface components {
             public?: boolean;
             redirect_uris?: string[];
             scopes?: string[];
+            required_roles?: string[];
+            require_consent?: boolean;
             client_secret?: string | null;
         };
         UserStatusRequest: {

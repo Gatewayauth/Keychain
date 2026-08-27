@@ -102,7 +102,7 @@ const errorHint = computed(() => {
     case 'invalid_scope':
       return 'The application requested a scope this client isn\'t allowed to use.'
     case 'access_denied':
-      return 'The request was denied.'
+      return 'You don\'t have access to this application. Ask an administrator to grant you the required role.'
     default:
       return ''
   }

@@ -9,6 +9,7 @@ import type {
   RecoveryCodes,
   ConsentRequest,
   CreateClientRequest,
+  UpdateClientRequest,
   ClientResponse,
   UserStatus,
   UserRole,
@@ -81,6 +82,8 @@ export function useApi() {
       $api<ClientResponse[]>('/api/admin/clients'),
     adminCreateClient: (body: CreateClientRequest) =>
       $api<ClientResponse>('/api/admin/clients', { method: 'POST', body }),
+    adminUpdateClient: (id: string, body: UpdateClientRequest) =>
+      $api<ClientResponse>(`/api/admin/clients/${id}`, { method: 'PATCH', body }),
     adminDeleteClient: (id: string) =>
       $api(`/api/admin/clients/${id}`, { method: 'DELETE' }),
     adminUsers: (params?: { limit?: number, offset?: number }) =>

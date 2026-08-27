@@ -15,10 +15,24 @@ const form = reactive({
   name: '',
   redirectUris: '',
   scopes: 'openid profile email',
+  requiredRoles: '',
   public: false,
   requireConsent: true
 })
 const createError = ref('')
+
+// Edit an existing client (in place — the client secret is never touched).
+const editOpen = ref(false)
+const saving = ref(false)
+const editId = ref<string | null>(null)
+const editForm = reactive({
+  name: '',
+  redirectUris: '',
+  scopes: '',
+  requiredRoles: '',
+  requireConsent: true
+})
+const editError = ref('')
 
 // One-time secret reveal after creating a confidential client.
 const createdClient = ref<ClientResponse | null>(null)
@@ -41,9 +55,54 @@ function resetForm() {
   form.name = ''
   form.redirectUris = ''
   form.scopes = 'openid profile email'
+  form.requiredRoles = ''
   form.public = false
   form.requireConsent = true
   createError.value = ''
+}
+
+function splitTokens(v: string) {
+  return v.split(/\s+/).map(s => s.trim()).filter(Boolean)
+}
+
+function openEdit(c: ClientResponse) {
+  editId.value = c.client_id || null
+  editForm.name = c.name || ''
+  editForm.redirectUris = (c.redirect_uris || []).join('\n')
+  // Drop openid from the editable list — the backend always re-adds it.
+  editForm.scopes = (c.scopes || []).filter(s => s !== 'openid').join(' ')
+  editForm.requiredRoles = (c.required_roles || []).join(' ')
+  editForm.requireConsent = c.require_consent ?? true
+  editError.value = ''
+  editOpen.value = true
+}
+
+async function saveEdit() {
+  if (!editId.value) return
+  const redirect_uris = editForm.redirectUris.split(/\s*[\n,]\s*/).map(s => s.trim()).filter(Boolean)
+  if (!editForm.name.trim() || !redirect_uris.length) {
+    editError.value = 'Name and at least one redirect URI are required.'
+    return
+  }
+  saving.value = true
+  editError.value = ''
+  try {
+    await api.adminUpdateClient(editId.value, {
+      name: editForm.name.trim(),
+      redirect_uris,
+      scopes: splitTokens(editForm.scopes),
+      require_consent: editForm.requireConsent,
+      required_roles: splitTokens(editForm.requiredRoles)
+    })
+    editOpen.value = false
+    editId.value = null
+    toast.add({ title: 'Client updated', color: 'success', icon: 'i-lucide-check' })
+    await load()
+  } catch (e) {
+    editError.value = apiErrorMessage(e, 'Could not update client')
+  } finally {
+    saving.value = false
+  }
 }
 
 async function create() {
@@ -58,9 +117,10 @@ async function create() {
     const res = await api.adminCreateClient({
       name: form.name.trim(),
       redirect_uris,
-      scopes: form.scopes.split(/\s+/).map(s => s.trim()).filter(Boolean),
+      scopes: splitTokens(form.scopes),
       public: form.public,
-      require_consent: form.requireConsent
+      require_consent: form.requireConsent,
+      required_roles: splitTokens(form.requiredRoles)
     })
     createOpen.value = false
     resetForm()
@@ -217,18 +277,48 @@ onMounted(load)
                 >—</span>
               </div>
             </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-dimmed mb-0.5">
+                Required roles
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <UBadge
+                  v-for="r in c.required_roles"
+                  :key="r"
+                  color="warning"
+                  variant="soft"
+                  size="sm"
+                >
+                  {{ r }}
+                </UBadge>
+                <span
+                  v-if="!c.required_roles?.length"
+                  class="text-muted"
+                >Any signed-in user</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <UButton
-          color="error"
-          variant="ghost"
-          size="sm"
-          icon="i-lucide-trash-2"
-          :loading="deleting === c.client_id"
-          aria-label="Delete client"
-          @click="remove(c)"
-        />
+        <div class="flex items-center gap-1 shrink-0">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-pencil"
+            aria-label="Edit client"
+            @click="openEdit(c)"
+          />
+          <UButton
+            color="error"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-trash-2"
+            :loading="deleting === c.client_id"
+            aria-label="Delete client"
+            @click="remove(c)"
+          />
+        </div>
       </div>
     </div>
 
@@ -288,6 +378,18 @@ onMounted(load)
             />
           </UFormField>
 
+          <UFormField
+            label="Required roles"
+            name="requiredRoles"
+            hint="Space-separated role slugs. Leave blank to allow any signed-in user."
+          >
+            <UInput
+              v-model="form.requiredRoles"
+              placeholder="grafana-admin grafana-viewer"
+              class="w-full font-mono text-sm"
+            />
+          </UFormField>
+
           <div class="grid sm:grid-cols-2 gap-3">
             <USwitch
               v-model="form.public"
@@ -317,6 +419,99 @@ onMounted(load)
             @click="create"
           >
             Create client
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- Edit modal -->
+    <UModal
+      v-model:open="editOpen"
+      title="Edit OAuth client"
+    >
+      <template #body>
+        <form
+          class="space-y-4"
+          @submit.prevent="saveEdit"
+        >
+          <UAlert
+            v-if="editError"
+            color="error"
+            variant="soft"
+            icon="i-lucide-circle-alert"
+            :description="editError"
+          />
+
+          <UFormField
+            label="Name"
+            name="name"
+            required
+          >
+            <UInput
+              v-model="editForm.name"
+              icon="i-lucide-tag"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Redirect URIs"
+            name="redirect"
+            hint="One per line"
+            required
+          >
+            <UTextarea
+              v-model="editForm.redirectUris"
+              :rows="3"
+              class="w-full font-mono text-sm"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Scopes"
+            name="scopes"
+            hint="Space-separated"
+          >
+            <UInput
+              v-model="editForm.scopes"
+              class="w-full font-mono text-sm"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Required roles"
+            name="requiredRoles"
+            hint="Space-separated role slugs. Leave blank to allow any signed-in user."
+          >
+            <UInput
+              v-model="editForm.requiredRoles"
+              placeholder="grafana-admin grafana-viewer"
+              class="w-full font-mono text-sm"
+            />
+          </UFormField>
+
+          <USwitch
+            v-model="editForm.requireConsent"
+            label="Require consent"
+            description="Show consent screen"
+          />
+        </form>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="editOpen = false"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            :loading="saving"
+            icon="i-lucide-save"
+            @click="saveEdit"
+          >
+            Save changes
           </UButton>
         </div>
       </template>
