@@ -22,19 +22,29 @@ ENV NUXT_PUBLIC_API_BASE=__NUXT_PUBLIC_API_BASE__ \
     NUXT_PUBLIC_TENANT_SLUG=__NUXT_PUBLIC_TENANT_SLUG__
 RUN yarn nuxt generate
 
-# --- Runtime stage: nginx serving the static tree ---
-FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runtime
+# --- Runtime stage: non-root nginx serving the static tree ---
+# nginx-unprivileged runs as uid 101 and listens on 8080 (see docker/nginx.conf),
+# satisfying the "container must not run as root" hardening check.
+FROM nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0 AS runtime
 
+# COPY/chmod/chown need root; the base image drops back to uid 101 for runtime.
+USER root
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/entrypoint.sh /docker-entrypoint.d/40-keychain-runtime-config.sh
-RUN chmod +x /docker-entrypoint.d/40-keychain-runtime-config.sh
-
 COPY --from=build /app/.output/public /usr/share/nginx/html
+# entrypoint.sh rewrites the html files in place (sed -i), so they must be owned
+# by the runtime uid; also make the hook executable.
+RUN chmod +x /docker-entrypoint.d/40-keychain-runtime-config.sh \
+ && chown -R 101:101 /usr/share/nginx/html
+USER 101
 
 # Defaults if the operator sets nothing. Override at `docker run`/compose.
 ENV NUXT_PUBLIC_API_BASE=http://localhost:8080 \
     NUXT_PUBLIC_TENANT_SLUG=default
 
-EXPOSE 80
-# nginx:alpine's own entrypoint runs everything in /docker-entrypoint.d then
-# execs nginx, so our token-swap script runs before the server starts.
+EXPOSE 8080
+# Liveness probe via busybox wget (present in alpine).
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1
+# The base image entrypoint runs everything in /docker-entrypoint.d then execs
+# nginx, so our token-swap script runs before the server starts.
