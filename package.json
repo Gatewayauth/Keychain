@@ -22,7 +22,7 @@
     "@iconify-json/lucide": "^1.2.124",
     "@iconify-json/simple-icons": "^1.2.93",
     "@nuxt/ui": "^4.10.0",
-    "nuxt": "^4.5.2",
+    "nuxt": "^4.6.2",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4.3.3"
   },
